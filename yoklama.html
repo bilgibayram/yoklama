@@ -157,6 +157,7 @@
     th:nth-child(2), td:nth-child(2) { display: none; }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -239,7 +240,7 @@
   <div id="qr-box">
     <h3>📱 QR Kodu Tarat</h3>
     <p>Öğrenciler bu kodu tarayarak yoklamaya girebilir</p>
-    <img id="qr-img" width="220" height="220" alt="QR Kod yükleniyor...">
+    <div id="qr-img" style="width:220px;height:220px;margin:0 auto;"></div>
     <div id="qr-url"></div>
     <button class="btn-close" onclick="closeQR()">Kapat</button>
   </div>
@@ -573,7 +574,16 @@ function startSession() {
   // QR modal aç
   const sessionURL = SITE_URL + '?token=' + activeToken;
   document.getElementById('qr-url').textContent = sessionURL;
-  document.getElementById('qr-img').src = QR_DATA_URI;
+  const qrDiv = document.getElementById('qr-img');
+  qrDiv.innerHTML = '';
+  new QRCode(qrDiv, {
+    text: sessionURL,
+    width: 220,
+    height: 220,
+    colorDark: '#000',
+    colorLight: '#fff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
   qrGenerated = true;
   document.getElementById('qr-modal').classList.add('open');
 }
@@ -607,6 +617,9 @@ if (location.search.includes('teacher')) {
   const urlToken = new URLSearchParams(location.search).get('token');
   if (!urlToken) {
     document.getElementById('search-screen').innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:48px;">⏳</div><h3 style="color:#c53030;margin:12px 0 8px;">Yoklama Henüz Açılmadı</h3><p style="color:#718096;font-size:14px;">Öğretmeninizin QR kodunu okutun.</p></div>';
+  } else {
+    // Token var, normal göster - zaman kontrolü yok (sunucu yapıyor)
+    document.getElementById('search-input').focus();
   }
 }
 renderTable();
