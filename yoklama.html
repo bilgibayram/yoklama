@@ -175,7 +175,7 @@
   <div class="card" id="login-screen" style="text-align:center;padding:40px 20px;">
     <div style="font-size:48px;margin-bottom:12px;">🎓</div>
     <h2 style="color:#2b6cb0;margin-bottom:6px;">EGZERSİZ FİZYOLOJİSİ</h2>
-    <p style="color:#718096;font-size:14px;margin-bottom:24px;">Yoklamaya katılmak için okul Google hesabınızla giriş yapın</p>
+    <p style="color:#718096;font-size:14px;margin-bottom:24px;">Yoklamaya katılmak için Google hesabınızla giriş yapın</p>
     <div id="g_id_onload"
          data-client_id="457334695959-ugesu8noqetiof9m9vgitc0bghn79ped.apps.googleusercontent.com"
          data-callback="handleGoogleLogin"
@@ -280,13 +280,6 @@ function handleGoogleLogin(response) {
   const payload = JSON.parse(atob(response.credential.split('.')[1]));
   const email = payload.email;
   const name = payload.name;
-  
-  // Sadece edu.tr domainleri kabul et
-  if (!email.endsWith('.edu.tr') && !email.endsWith('@ogr.ogu.edu.tr') && !email.includes('edu')) {
-    document.getElementById('login-error').textContent = 'Lütfen okul e-posta adresinizle giriş yapın.';
-    document.getElementById('login-error').style.display = 'block';
-    return;
-  }
   
   googleUser = { email, name };
   
