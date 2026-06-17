@@ -413,30 +413,39 @@ function confirmAttendance() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   const dateStr = now.toLocaleDateString('tr-TR');
+  const urlToken = new URLSearchParams(location.search).get('token');
+  const student = selectedStudent;
+  selectedStudent = null;
 
-  // Önce UI'ı güncelle
-  attendance[selectedStudent.no] = { name: selectedStudent.name, time: timeStr };
-  save();
-  document.getElementById('confirm-screen').style.display = 'none';
-  document.getElementById('success-screen').style.display = 'block';
-  document.getElementById('success-name').textContent = selectedStudent.name;
-  document.getElementById('success-time').textContent = 'Giriş saati: ' + timeStr;
-
-  // Google Sheets'e gönder
-  const payload = {
-    no:   selectedStudent.no,
-    name: selectedStudent.name,
-    time: timeStr,
-    date: dateStr
-  };
   fetch(SHEETS_URL, {
     method: 'POST',
-    mode: 'no-cors',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  }).catch(() => {}); // sessizce hata yut, yerel kayıt zaten yapıldı
-
-  selectedStudent = null;
+    body: JSON.stringify({action:'attend', token: urlToken || '', no: student.no, name: student.name, time: timeStr, date: dateStr})
+  })
+  .then(r => r.text())
+  .then(result => {
+    document.getElementById('confirm-screen').style.display = 'none';
+    document.getElementById('success-screen').style.display = 'block';
+    if (result === 'DUPLICATE') {
+      document.getElementById('success-screen').innerHTML = '<div style="font-size:64px">⚠️</div><h3 style="color:#c53030;margin:12px 0 6px">Zaten Kayıtlısın!</h3><p style="color:#718096;font-size:14px">Bu ders için yoklaman zaten alındı.</p>';
+    } else if (result === 'EXPIRED') {
+      document.getElementById('success-screen').innerHTML = '<div style="font-size:64px">⏰</div><h3 style="color:#c53030;margin:12px 0 6px">Süre Doldu!</h3><p style="color:#718096;font-size:14px">Yoklama süresi sona erdi.</p>';
+    } else if (result === 'INVALID') {
+      document.getElementById('success-screen').innerHTML = '<div style="font-size:64px">❌</div><h3 style="color:#c53030;margin:12px 0 6px">Geçersiz QR Kodu</h3><p style="color:#718096;font-size:14px">Öğretmeninizden yeni QR kodu isteyin.</p>';
+    } else {
+      attendance[student.no] = { name: student.name, time: timeStr };
+      save();
+      document.getElementById('success-screen').innerHTML = '<div class="check">✅</div><h3>Yoklama Alındı!</h3><p>' + student.name + '</p><p class="time">Giriş saati: ' + timeStr + '</p>';
+    }
+  })
+  .catch(() => {
+    // Bağlantı hatası - yerel kayıt yap
+    attendance[student.no] = { name: student.name, time: timeStr };
+    save();
+    document.getElementById('confirm-screen').style.display = 'none';
+    document.getElementById('success-screen').style.display = 'block';
+    document.getElementById('success-screen').innerHTML = '<div class="check">✅</div><h3>Yoklama Alındı!</h3><p>' + student.name + '</p><p class="time">Giriş saati: ' + timeStr + '</p>';
+  });
 }
 
 function backToSearch() {
