@@ -211,7 +211,8 @@
     </div>
 
     <div class="action-btns" style="margin-bottom:14px;">
-      <button class="btn-qr"    onclick="openQR()">📱 QR Kodu Göster</button>
+      <button id="btn-start-session" class="btn-qr" onclick="startSession()">🚀 Yoklamayı Başlat</button>
+      <button class="btn-qr" onclick="openQR()" style="background:#4a5568;">📱 QR Göster</button>
       <button class="btn-export" onclick="loadFromSheets()" style="background:#6b46c1;">🔄 Yenile</button>
       <button class="btn-export" onclick="exportCSV()">⬇ CSV İndir</button>
       <button class="btn-reset"  onclick="resetAll()">🗑 Sıfırla</button>
@@ -537,16 +538,60 @@ function resetAll() {
 
 // ── QR KOD ──────────────────────────────────────────────
 const SITE_URL = 'https://bilgibayram.github.io/yoklama/yoklama.html';
+let activeToken = null;
+let tokenExpires = null;
+let tokenTimer = null;
 // QR görsel — direkt gömülü, dış servise gerek yok
 const QR_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADCklEQVR4nO2cXYrbMBRGz60FeZRhFjBLsXfQJZXuzFpKFlCQHwdsvj5Iip1SKO10kkx89WCcsQ6RiLg/370eE3890pe/Z8AhhxxyyCGHHHpOyOoIkCxg41wvJAvA3CaMd1meQzeEkCQxSJJyJ4iSJurd9mA3b3rwPTn0P6D5YgBmM4hLvSsmAygW5F7Lc+iOUJTsW16tWIWJ1T7qmxz6DJCUVyP1tBAiLmj6iG9y6DGh5gmigBmATsZ8kg35BSN2RcPaK1kPvieH/gOUzMysh5JhDLk9H84BG1lLqnGv5Tl0axuxMwDp9c3EDILlcrnWuh98Tw69H7IRgDnAcD7JrG/BRJUiQjEjd1qeQ7fXI3Z3UZK0UC7TbkoVJVyPeGpo93OXz0M7DAy5a+JU7sSQ62Q/EU8NXZ2IuMAgqR4GLfWATHGps12zfHoobLdiDgBrIPUdVvJQwIbzScAadOvlOXQvaMirkV6lGjhkinkAoAiXqb9EoJ9jTw69w2tIGbbDUP9WHEYrfHkccQyo/chRKuHCkGnhZd7yj4V6LPxEPDtU4ggjgsFJwBKU+izS1yXA/FJ8hw2bSvXge3LoPdBVf0SzB/XC5kk6uY04GlQrF1vMsEWWNsY3+y10u+U5dCuoZp/JQOlr3j9K1qn4imSdjK1T4sH35NB7oF1eAcU8bA11NbzceRL3Gk8PtTgic6VPxr2O2aZ4XeNIUGmsDNhIJ+lsVgSIiU42Avreu9c4EjSfWl0jr2YjXVEv7ds5oKnI2/VsfJo9OfQvUIss+w4l64qvMOKbMUw1ejDAIP5wG3EA6BJZNj2ixI5xXxLf6qEeWT4/1DTLMrpFqc/YcA7A/CJLPdaEy9W89nkYaGjlLmA1fe/BxkuZg7jgtc+DQFfZZ+mXglrnvLRPlRH9Lb9DQqnvRHqVbIxvVgXsUubw7POg0GrSORQ3oWkO9Z2uElvcf3kOfSz067vhrfn60nG5CzBcszwCtOvOh61VKnctBc3bvMV7qA4Amf4859fh/5nMIYcccsghhxwC+AlJBGJ7HuWypAAAAABJRU5ErkJggg==';
 
 let qrGenerated = false;
 function openQR() {
+  if (!activeToken) {
+    alert('Önce "Yoklamayı Başlat" butonuna basın!');
+    return;
+  }
   document.getElementById('qr-modal').classList.add('open');
-  if (!qrGenerated) {
-    document.getElementById('qr-url').textContent = SITE_URL;
-    document.getElementById('qr-img').src = QR_DATA_URI;
-    qrGenerated = true;
+}
+
+function startSession() {
+  // Token client-side üret
+  activeToken = Math.random().toString(36).substring(2, 8).toUpperCase();
+  tokenExpires = Date.now() + 5 * 60 * 1000;
+
+  // Sheets'e token'ı kaydet (doğrulama için)
+  fetch(SHEETS_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action: 'createToken', token: activeToken, expires: tokenExpires })
+  }).catch(() => {});
+
+  // Sayacı başlat
+  if (tokenTimer) clearInterval(tokenTimer);
+  tokenTimer = setInterval(updateSessionUI, 1000);
+  updateSessionUI();
+
+  // QR modal aç
+  const sessionURL = SITE_URL + '?token=' + activeToken;
+  document.getElementById('qr-url').textContent = sessionURL;
+  document.getElementById('qr-img').src = QR_DATA_URI;
+  qrGenerated = true;
+  document.getElementById('qr-modal').classList.add('open');
+}
+
+function updateSessionUI() {
+  if (!activeToken) return;
+  const remaining = Math.max(0, Math.round((tokenExpires - Date.now()) / 1000));
+  const btn = document.getElementById('btn-start-session');
+  if (btn) {
+    if (remaining > 0) {
+      btn.textContent = '🟢 Yoklama Açık — ' + remaining + 's kaldı';
+      btn.style.background = '#276749';
+    } else {
+      btn.textContent = '🔴 Süre Doldu — Yeniden Başlat';
+      btn.style.background = '#c53030';
+      activeToken = null;
+      clearInterval(tokenTimer);
+    }
   }
 }
 function closeQR() {
@@ -555,7 +600,15 @@ function closeQR() {
 
 // ── BAŞLANGIÇ ───────────────────────────────────────────
 // URL'de ?teacher varsa öğretmen panelini aç
-if (location.search.includes('teacher')) showPanel('teacher');
+// Öğrenci tarafı: token yoksa uyar
+if (location.search.includes('teacher')) {
+  showPanel('teacher');
+} else {
+  const urlToken = new URLSearchParams(location.search).get('token');
+  if (!urlToken) {
+    document.getElementById('search-screen').innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:48px;">⏳</div><h3 style="color:#c53030;margin:12px 0 8px;">Yoklama Henüz Açılmadı</h3><p style="color:#718096;font-size:14px;">Öğretmeninizin QR kodunu okutun.</p></div>';
+  }
+}
 renderTable();
 </script>
 </body>
