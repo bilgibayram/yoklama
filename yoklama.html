@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EGZERSİZ FİZYOLOJİSİ – Yoklama</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a202c; }
+
+  /* ── PANEL SEÇİCİ ── */
+  #panel-selector {
+    display: flex; gap: 8px; justify-content: center;
+    padding: 12px; background: #2b6cb0; position: sticky; top: 0; z-index: 100;
+  }
+  #panel-selector button {
+    padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: background .2s;
+  }
+  #btn-student { background: #fff; color: #2b6cb0; }
+  #btn-teacher { background: rgba(255,255,255,.25); color: #fff; }
+  #btn-student.active { background: #fff; color: #2b6cb0; }
+  #btn-teacher.active { background: #fff; color: #2b6cb0; }
+
+  /* ── PANELLERİN GİZLENMESİ ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── ÖĞRENCİ PANELİ ── */
+  #student-panel { max-width: 480px; margin: 32px auto; padding: 0 16px 40px; }
+  .card {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.1); padding: 28px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 18px; color: #2b6cb0; margin-bottom: 4px; }
+  .card p  { font-size: 13px; color: #718096; margin-bottom: 18px; }
+
+  #search-input {
+    width: 100%; padding: 12px 14px; border: 2px solid #e2e8f0;
+    border-radius: 8px; font-size: 15px; outline: none; transition: border .2s;
+  }
+  #search-input:focus { border-color: #2b6cb0; }
+
+  #student-list { margin-top: 10px; max-height: 320px; overflow-y: auto; }
+  .student-item {
+    padding: 11px 14px; border-radius: 8px; cursor: pointer;
+    transition: background .15s; font-size: 14px; display: flex;
+    align-items: center; gap: 10px;
+  }
+  .student-item:hover { background: #ebf8ff; }
+  .student-item .no { font-size: 12px; color: #a0aec0; width: 88px; flex-shrink: 0; }
+
+  /* onay ekranı */
+  #confirm-screen { text-align: center; display: none; }
+  #confirm-screen h3 { font-size: 20px; margin-bottom: 6px; }
+  #confirm-screen p  { color: #718096; margin-bottom: 22px; font-size: 14px; }
+  .btn-confirm {
+    display: inline-block; padding: 13px 36px; background: #2b6cb0; color: #fff;
+    border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: background .2s;
+  }
+  .btn-confirm:hover { background: #2c5282; }
+  .btn-back {
+    display: inline-block; padding: 10px 24px; background: #e2e8f0; color: #4a5568;
+    border: none; border-radius: 10px; font-size: 14px; cursor: pointer; margin-top: 10px;
+  }
+  /* başarı ekranı */
+  #success-screen { text-align: center; display: none; }
+  #success-screen .check { font-size: 72px; }
+  #success-screen h3 { font-size: 22px; color: #276749; margin: 12px 0 6px; }
+  #success-screen p  { color: #718096; font-size: 14px; }
+  #success-screen .time { font-size: 13px; color: #a0aec0; margin-top: 8px; }
+
+  /* ── ÖĞRETMEN PANELİ ── */
+  #teacher-panel { max-width: 900px; margin: 24px auto; padding: 0 16px 40px; }
+  #teacher-panel h1 { font-size: 22px; color: #2b6cb0; margin-bottom: 4px; }
+  #teacher-panel .meta { font-size: 13px; color: #718096; margin-bottom: 18px; }
+
+  .stats { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .stat-box {
+    flex: 1; min-width: 120px; background: #fff; border-radius: 12px;
+    padding: 18px; text-align: center;
+    box-shadow: 0 1px 6px rgba(0,0,0,.08);
+  }
+  .stat-box .num { font-size: 32px; font-weight: 700; color: #2b6cb0; }
+  .stat-box .lbl { font-size: 12px; color: #718096; margin-top: 2px; }
+  .stat-box.green .num { color: #276749; }
+  .stat-box.red   .num { color: #c53030; }
+
+  .teacher-controls {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center;
+  }
+  #teacher-search {
+    flex: 1; min-width: 180px; padding: 9px 12px; border: 2px solid #e2e8f0;
+    border-radius: 8px; font-size: 14px; outline: none;
+  }
+  #teacher-search:focus { border-color: #2b6cb0; }
+  .filter-btn {
+    padding: 9px 14px; border: 2px solid #e2e8f0; background: #fff;
+    border-radius: 8px; font-size: 13px; cursor: pointer; transition: all .15s;
+  }
+  .filter-btn.active { border-color: #2b6cb0; background: #ebf8ff; color: #2b6cb0; }
+
+  .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-export, .btn-reset, .btn-qr {
+    padding: 9px 16px; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s;
+  }
+  .btn-export { background: #276749; color: #fff; }
+  .btn-export:hover { background: #22543d; }
+  .btn-reset  { background: #c53030; color: #fff; }
+  .btn-reset:hover  { background: #9b2c2c; }
+  .btn-qr     { background: #2b6cb0; color: #fff; }
+  .btn-qr:hover     { background: #2c5282; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff;
+    border-radius: 12px; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+  thead { background: #2b6cb0; color: #fff; }
+  th, td { padding: 11px 14px; text-align: left; font-size: 13px; }
+  th { font-weight: 600; }
+  tbody tr:nth-child(even) { background: #f7fafc; }
+  tbody tr:hover { background: #ebf8ff; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .badge-var  { background: #c6f6d5; color: #276749; }
+  .badge-yok  { background: #fed7d7; color: #c53030; }
+  .badge-btn  {
+    padding: 4px 10px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 11px; font-weight: 700; transition: background .15s;
+  }
+  .badge-btn.toggle-in  { background: #c6f6d5; color: #276749; }
+  .badge-btn.toggle-out { background: #fed7d7; color: #c53030; }
+
+  /* QR Modal */
+  #qr-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  #qr-modal.open { display: flex; }
+  #qr-box {
+    background: #fff; border-radius: 18px; padding: 36px 40px;
+    text-align: center; max-width: 340px; width: 90%;
+  }
+  #qr-box h3 { font-size: 17px; color: #2b6cb0; margin-bottom: 4px; }
+  #qr-box p  { font-size: 12px; color: #718096; margin-bottom: 20px; }
+  #qr-img { margin: 0 auto 16px; display: block; border-radius: 8px; }
+  #qr-url    { font-size: 11px; color: #a0aec0; word-break: break-all; margin-bottom: 16px; }
+  #qr-box .btn-close {
+    padding: 9px 24px; background: #e2e8f0; color: #4a5568;
+    border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+
+  @media (max-width: 500px) {
+    th:nth-child(2), td:nth-child(2) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Panel seçici -->
+<div id="panel-selector">
+  <button id="btn-student" class="active" onclick="showPanel('student')">📋 Yoklama</button>
+  <button id="btn-teacher" onclick="showPanel('teacher')">👨‍🏫 Öğretmen</button>
+</div>
+
+<!-- ══════════════ ÖĞRENCİ PANELİ ══════════════ -->
+<div id="student-panel" class="panel active">
+  <div class="card" id="search-screen">
+    <h2>EGZERSİZ FİZYOLOJİSİ – FTR204</h2>
+    <p>Adınızı aşağıdan aratın ve seçin</p>
+    <input id="search-input" type="text" placeholder="Ad veya öğrenci numarası..." autocomplete="off" oninput="filterList()">
+    <div id="student-list"></div>
+  </div>
+
+  <div class="card" id="confirm-screen">
+    <h3 id="confirm-name"></h3>
+    <p id="confirm-no"></p>
+    <button class="btn-confirm" onclick="confirmAttendance()">✅ Yoklamayı Onayla</button><br>
+    <button class="btn-back" onclick="backToSearch()">← Geri</button>
+  </div>
+
+  <div class="card" id="success-screen">
+    <div class="check">✅</div>
+    <h3>Yoklama Alındı!</h3>
+    <p id="success-name"></p>
+    <p class="time" id="success-time"></p>
+  </div>
+</div>
+
+<!-- ══════════════ ÖĞRETMEN PANELİ ══════════════ -->
+<div id="teacher-panel" class="panel">
+  <div class="card">
+    <h1>Yoklama Listesi</h1>
+    <div class="meta">EGZERSİZ FİZYOLOJİSİ · FTR204 · 2025-2026 BAHAR · Öğr.Gör.Dr. BAYRAM BİLGİ</div>
+
+    <div class="stats">
+      <div class="stat-box"><div class="num" id="stat-total">105</div><div class="lbl">Toplam</div></div>
+      <div class="stat-box green"><div class="num" id="stat-in">0</div><div class="lbl">Katıldı</div></div>
+      <div class="stat-box red"><div class="num" id="stat-out">105</div><div class="lbl">Gelmedi</div></div>
+      <div class="stat-box"><div class="num" id="stat-pct">0%</div><div class="lbl">Katılım</div></div>
+    </div>
+
+    <div class="teacher-controls">
+      <input id="teacher-search" type="text" placeholder="Ara..." oninput="renderTable()">
+      <button class="filter-btn active" id="filt-all" onclick="setFilter('all')">Tümü</button>
+      <button class="filter-btn" id="filt-in"  onclick="setFilter('in')">Katıldı</button>
+      <button class="filter-btn" id="filt-out" onclick="setFilter('out')">Gelmedi</button>
+    </div>
+
+    <div class="action-btns" style="margin-bottom:14px;">
+      <button class="btn-qr"    onclick="openQR()">📱 QR Kodu Göster</button>
+      <button class="btn-export" onclick="exportCSV()">⬇ CSV İndir</button>
+      <button class="btn-reset"  onclick="resetAll()">🗑 Sıfırla</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Öğrenci No</th>
+          <th>Ad Soyad</th>
+          <th>Durum</th>
+          <th>Saat</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="qr-modal">
+  <div id="qr-box">
+    <h3>📱 QR Kodu Tarat</h3>
+    <p>Öğrenciler bu kodu tarayarak yoklamaya girebilir</p>
+    <img id="qr-img" width="220" height="220" alt="QR Kod yükleniyor...">
+    <div id="qr-url"></div>
+    <button class="btn-close" onclick="closeQR()">Kapat</button>
+  </div>
+</div>
+
+
+<script>
+// ── GOOGLE SHEETS URL ─────────────────────────────────
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwp0rFlKi2NbsOcvoV95ZzwxYWvSI-arDCbsLPY9eXV3Zao9mkc9M8Y4wqfLaRTq4akeA/exec';
+
+// ── VERİ ──────────────────────────────────────────────
+const STUDENTS = [
+  {no:"22060211028",name:"CEMAL FIRTINA"},
+  {no:"22060211030",name:"TALHA TUT"},
+  {no:"22060211032",name:"DUYGU YAVUZ"},
+  {no:"22060211065",name:"BERKE AVAS"},
+  {no:"22060211072",name:"AHMET HASAN YILDIRIM"},
+  {no:"22060211074",name:"ÖMER ÇELİK"},
+  {no:"22060241005",name:"MOHAMED SALEBAN YASIN MOHAMED SALEBAN YASIN"},
+  {no:"22060241007",name:"ALİYE KHALİL"},
+  {no:"23060211013",name:"MUHAMMET EMİN BAŞER"},
+  {no:"23060211014",name:"ALTAN KUTAY ERTAŞ"},
+  {no:"23060211015",name:"ÖZLEM TEKİN"},
+  {no:"23060211029",name:"HAYRÜ NİSA TUANA ARSLAN"},
+  {no:"23060211042",name:"GÖRKEM ZOR"},
+  {no:"23060211045",name:"MERVE ES"},
+  {no:"23060211050",name:"BERKAY DENİZ"},
+  {no:"23060211053",name:"FURKAN DEVECİ"},
+  {no:"23060211061",name:"ARDA DENİZ AYDIN"},
+  {no:"23060211075",name:"YAREN ÇELEBİ"},
+  {no:"23060211076",name:"RUVEYDE BÜYÜKKARTAL"},
+  {no:"23060241009",name:"AHMAD AMIN HAMDARD"},
+  {no:"23060261002",name:"BERFİN BİRLİK"},
+  {no:"24060211001",name:"ALİ EGE EKER"},
+  {no:"24060211002",name:"HAZAL ERTOREN"},
+  {no:"24060211003",name:"HASAN DEV"},
+  {no:"24060211005",name:"ELİF CANBAZ"},
+  {no:"24060211006",name:"MERVE GÜL ASALIOĞLU"},
+  {no:"24060211007",name:"BEYZA HATUN DİKKAYA"},
+  {no:"24060211009",name:"YUNUS EMRE ÇETİNKAYA"},
+  {no:"24060211012",name:"ÖZGE AKÇAY"},
+  {no:"24060211013",name:"SUDE KASIMOĞLU"},
+  {no:"24060211014",name:"FAHRİ İSNAÇ"},
+  {no:"24060211015",name:"NEHİR AYDEMİR"},
+  {no:"24060211016",name:"ELİF TUSE UZGÜVEN"},
+  {no:"24060211017",name:"YUDUM NUR GÜLEÇ"},
+  {no:"24060211018",name:"SAMED KOÇ"},
+  {no:"24060211019",name:"ELİSA NUR KISABOYUN"},
+  {no:"24060211020",name:"ZEYNEP CANTÜRK"},
+  {no:"24060211021",name:"HAVVA ŞAHİN"},
+  {no:"24060211023",name:"TUNAHAN ÖZTÜRK"},
+  {no:"24060211024",name:"İKBAL BAHADIR"},
+  {no:"24060211025",name:"NİSA SELÇUK"},
+  {no:"24060211027",name:"ZEYNEP MELEK İNAN"},
+  {no:"24060211028",name:"EGE ARDA YILDIZ"},
+  {no:"24060211029",name:"AYŞE ERKOCA"},
+  {no:"24060211031",name:"HÜSEYİN ARDA YILDIZ"},
+  {no:"24060211034",name:"GÖKÇENUR KARA"},
+  {no:"24060211035",name:"ŞEVVAL SOYYİĞİT"},
+  {no:"24060211036",name:"ZEHRA BUDAK"},
+  {no:"24060211038",name:"SENANUR YILMAZ"},
+  {no:"24060211039",name:"SAHRANUR HAMZAOĞLU"},
+  {no:"24060211040",name:"SUDE NUR ŞEVİK"},
+  {no:"24060211041",name:"BEKİR ZAR"},
+  {no:"24060211042",name:"CEREN AVCI"},
+  {no:"24060211043",name:"AYŞE NUR TÜRKMEN"},
+  {no:"24060211044",name:"BERAT BALAT"},
+  {no:"24060211045",name:"ALİ ARDA GÜL"},
+  {no:"24060211046",name:"TUĞBA YÜZER"},
+  {no:"24060211047",name:"ECEM NARİNCE"},
+  {no:"24060211049",name:"HULUSİ ŞAHİN"},
+  {no:"24060211050",name:"ALEYNA ÜNAL"},
+  {no:"24060211051",name:"BAŞAK GEZER"},
+  {no:"24060211052",name:"IŞIL ÖZTÜRK"},
+  {no:"24060211053",name:"DİLARA AKGÜMÜŞ"},
+  {no:"24060211054",name:"ASU GÖZÜKARA"},
+  {no:"24060211055",name:"BEYZA ELİF YILMAZ"},
+  {no:"24060211056",name:"EGEMEN BULUT"},
+  {no:"24060211057",name:"ERŞAH TEMUROĞLU"},
+  {no:"24060211058",name:"REYYAN AŞIK"},
+  {no:"24060211059",name:"GÖZDE DİRLER"},
+  {no:"24060211060",name:"YİĞİT ARSLAN"},
+  {no:"24060211061",name:"SALİH EFE BAYRAKTAR"},
+  {no:"24060211062",name:"AYŞENUR ÜNALDI"},
+  {no:"24060211063",name:"SUDENUR ÇEPEL"},
+  {no:"24060211064",name:"AHSEN EMEL GENÇ"},
+  {no:"24060211065",name:"EMİNE İŞİK"},
+  {no:"24060211066",name:"ELVİN NİSA SOLMAZ"},
+  {no:"24060211067",name:"ESMANUR GÜNGÖR"},
+  {no:"24060211069",name:"GÖKÇE YEŞİLTAŞ"},
+  {no:"24060211070",name:"BAHAR ARI"},
+  {no:"24060211071",name:"ASYA YILMAZER"},
+  {no:"24060211072",name:"MUHAMMED MERT YİĞİTER"},
+  {no:"24060211073",name:"SİNEM ŞEN"},
+  {no:"24060211074",name:"FATMA ŞEVVAL PARILDAR"},
+  {no:"24060211075",name:"TUĞBA ALKANAT"},
+  {no:"24060211077",name:"ECEM ÖZTÜRK"},
+  {no:"24060211078",name:"FUNDA MELİHA DEDE"},
+  {no:"24060211079",name:"YUNUS EREN KIZILCIK"},
+  {no:"24060211081",name:"BURCU ÜNAL"},
+  {no:"24060211082",name:"YAĞMUR BÜYÜKBALTA"},
+  {no:"24060211083",name:"BEYZA ÇELİK"},
+  {no:"24060211084",name:"ZEYNEP AKYILDIZ"},
+  {no:"24060211085",name:"SILA ATAN"},
+  {no:"24060211086",name:"ALEYNA YILMAZ"},
+  {no:"24060211087",name:"CEMİLE KIRAÇ"},
+  {no:"24060211088",name:"NURSENA AKTAŞ"},
+  {no:"24060211090",name:"AYŞE NUR PEHLİVAN"},
+  {no:"24060211091",name:"HİLAL MUTLU"},
+  {no:"24060241012",name:"NUMAN ASGARLI"},
+  {no:"24060251003",name:"MEHMET AYKUT"},
+  {no:"24060251015",name:"RABİA NUR BOYAN"},
+  {no:"24060261004",name:"ELİF ZİŞAN ÖZTAŞ"},
+  {no:"25060251001",name:"EGE DÜTAR"},
+  {no:"25060251004",name:"SERRA YILDIZ"},
+  {no:"25060251013",name:"SELEN AKGÜL"},
+  {no:"25060251017",name:"MELİKE GÜL"},
+];
+
+// Yoklama verisi – localStorage
+const STORAGE_KEY = 'yoklama_FTR204_v1';
+let attendance = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(attendance));
+}
+
+// ── PANEL ──────────────────────────────────────────────
+function showPanel(p) {
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById(p + '-panel').classList.add('active');
+  document.getElementById('btn-student').classList.toggle('active', p === 'student');
+  document.getElementById('btn-teacher').classList.toggle('active', p === 'teacher');
+  if (p === 'teacher') renderTable();
+}
+
+// ── ÖĞRENCİ PANELİ ──────────────────────────────────────
+let selectedStudent = null;
+
+function filterList() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const container = document.getElementById('student-list');
+  container.innerHTML = '';
+  if (!q) return;
+  const matches = STUDENTS.filter(s =>
+    s.name.toLowerCase().includes(q) || s.no.includes(q)
+  ).slice(0, 12);
+  matches.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'student-item';
+    const already = attendance[s.no];
+    div.innerHTML = `<span class="no">${s.no}</span><span>${s.name}${already ? ' ✅' : ''}</span>`;
+    div.onclick = () => selectStudent(s);
+    container.appendChild(div);
+  });
+  if (!matches.length) container.innerHTML = '<div style="padding:12px;color:#a0aec0;font-size:13px;">Sonuç bulunamadı</div>';
+}
+
+function selectStudent(s) {
+  selectedStudent = s;
+  document.getElementById('search-screen').style.display = 'none';
+  document.getElementById('confirm-screen').style.display = 'block';
+  document.getElementById('success-screen').style.display = 'none';
+  document.getElementById('confirm-name').textContent = s.name;
+  document.getElementById('confirm-no').textContent = 'Öğrenci No: ' + s.no;
+}
+
+function confirmAttendance() {
+  if (!selectedStudent) return;
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const dateStr = now.toLocaleDateString('tr-TR');
+
+  // Önce UI'ı güncelle
+  attendance[selectedStudent.no] = { name: selectedStudent.name, time: timeStr };
+  save();
+  document.getElementById('confirm-screen').style.display = 'none';
+  document.getElementById('success-screen').style.display = 'block';
+  document.getElementById('success-name').textContent = selectedStudent.name;
+  document.getElementById('success-time').textContent = 'Giriş saati: ' + timeStr;
+
+  // Google Sheets'e gönder
+  const payload = {
+    no:   selectedStudent.no,
+    name: selectedStudent.name,
+    time: timeStr,
+    date: dateStr
+  };
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).catch(() => {}); // sessizce hata yut, yerel kayıt zaten yapıldı
+
+  selectedStudent = null;
+}
+
+function backToSearch() {
+  document.getElementById('search-screen').style.display = 'block';
+  document.getElementById('confirm-screen').style.display = 'none';
+  document.getElementById('search-input').focus();
+}
+
+// ── ÖĞRETMEN PANELİ ──────────────────────────────────────
+let currentFilter = 'all';
+
+function setFilter(f) {
+  currentFilter = f;
+  ['all','in','out'].forEach(x => {
+    document.getElementById('filt-' + x).classList.toggle('active', x === f);
+  });
+  renderTable();
+}
+
+function renderTable() {
+  const q = document.getElementById('teacher-search').value.trim().toLowerCase();
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  const inCount  = Object.keys(attendance).length;
+  const outCount = STUDENTS.length - inCount;
+  document.getElementById('stat-in').textContent  = inCount;
+  document.getElementById('stat-out').textContent = outCount;
+  document.getElementById('stat-pct').textContent = Math.round(inCount / STUDENTS.length * 100) + '%';
+
+  STUDENTS.forEach((s, i) => {
+    const isIn = !!attendance[s.no];
+    if (currentFilter === 'in'  && !isIn) return;
+    if (currentFilter === 'out' &&  isIn) return;
+    if (q && !s.name.toLowerCase().includes(q) && !s.no.includes(q)) return;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${s.no}</td>
+      <td>${s.name}</td>
+      <td><span class="badge ${isIn ? 'badge-var' : 'badge-yok'}">${isIn ? 'Katıldı' : 'Gelmedi'}</span></td>
+      <td>${isIn ? attendance[s.no].time : '–'}</td>
+      <td><button class="badge-btn ${isIn ? 'toggle-out' : 'toggle-in'}" onclick="toggleManual('${s.no}')">${isIn ? 'Çıkar' : 'Ekle'}</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleManual(no) {
+  const s = STUDENTS.find(x => x.no === no);
+  if (!s) return;
+  if (attendance[no]) {
+    delete attendance[no];
+  } else {
+    const now = new Date();
+    attendance[no] = {
+      name: s.name,
+      time: now.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' (M)'
+    };
+  }
+  save();
+  renderTable();
+}
+
+function exportCSV() {
+  const rows = [['#','Öğrenci No','Ad Soyad','Durum','Saat']];
+  STUDENTS.forEach((s, i) => {
+    const isIn = !!attendance[s.no];
+    rows.push([i+1, s.no, s.name, isIn ? 'Katıldı' : 'Gelmedi', isIn ? attendance[s.no].time : '']);
+  });
+  const csv = '﻿' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'FTR204_yoklama_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function resetAll() {
+  if (!confirm('Tüm yoklama verileri silinecek. Emin misiniz?')) return;
+  attendance = {};
+  save();
+  renderTable();
+}
+
+// ── QR KOD ──────────────────────────────────────────────
+let qrGenerated = false;
+function openQR() {
+  document.getElementById('qr-modal').classList.add('open');
+  if (!qrGenerated) {
+    const url = location.href.split('?')[0];
+    document.getElementById('qr-url').textContent = url;
+    // Google Charts QR API — internet bağlantısı gerektir, CDN yok
+    const encoded = encodeURIComponent(url);
+    document.getElementById('qr-img').src =
+      `https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=${encoded}&chco=2b6cb0`;
+    qrGenerated = true;
+  }
+}
+function closeQR() {
+  document.getElementById('qr-modal').classList.remove('open');
+}
+
+// ── BAŞLANGIÇ ───────────────────────────────────────────
+// URL'de ?teacher varsa öğretmen panelini aç
+if (location.search.includes('teacher')) showPanel('teacher');
+renderTable();
+</script>
+</body>
+</html>
