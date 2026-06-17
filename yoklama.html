@@ -212,6 +212,7 @@
 
     <div class="action-btns" style="margin-bottom:14px;">
       <button class="btn-qr"    onclick="openQR()">📱 QR Kodu Göster</button>
+      <button class="btn-export" onclick="loadFromSheets()" style="background:#6b46c1;">🔄 Yenile</button>
       <button class="btn-export" onclick="exportCSV()">⬇ CSV İndir</button>
       <button class="btn-reset"  onclick="resetAll()">🗑 Sıfırla</button>
     </div>
@@ -371,7 +372,7 @@ function showPanel(p) {
   document.getElementById(p + '-panel').classList.add('active');
   document.getElementById('btn-student').classList.toggle('active', p === 'student');
   document.getElementById('btn-teacher').classList.toggle('active', p === 'teacher');
-  if (p === 'teacher') renderTable();
+  if (p === 'teacher') loadFromSheets();
 }
 
 // ── ÖĞRENCİ PANELİ ──────────────────────────────────────
@@ -451,6 +452,21 @@ function setFilter(f) {
     document.getElementById('filt-' + x).classList.toggle('active', x === f);
   });
   renderTable();
+}
+
+function loadFromSheets() {
+  fetch(SHEETS_URL, {credentials: 'omit'})
+    .then(r => r.json())
+    .then(rows => {
+      rows.forEach(r => {
+        if (r.no && !attendance[r.no]) {
+          attendance[r.no] = { name: r.name, time: r.time };
+        }
+      });
+      save();
+      renderTable();
+    })
+    .catch(() => renderTable());
 }
 
 function renderTable() {
